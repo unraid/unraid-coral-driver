@@ -1,0 +1,76 @@
+Menu="Utilities"
+Title="Coral Driver"
+Icon="coral-driver.png"
+---
+<?php
+require_once '/usr/local/emhttp/plugins/coral-driver/include/apex.php';
+$apex_devices = array_filter(explode("\n", shell_exec("find /dev/ -maxdepth 1 -type c -name \"apex*\" -printf '%f\n' 2>/dev/null")));
+$apex_states = array();
+?>
+<script>
+    if ( window.history.replaceState ) {
+        window.history.replaceState( null, null, window.location.href );
+    }
+</script>
+
+<h1 style="text-align: center;"><a href="https://forums.unraid.net/topic/98064-support-blakeblackshear-frigate/" target="_blank" rel="noopener"><span style="color:#ff5e4d;">Coral TPU Driver</span></a></h1>
+
+<?php
+if(empty($apex_devices)) {
+	echo '<p>&nbsp;</p><h2 style="text-align: center;"><strong><span style="color: #ff0000;">No PCI based Coral TPU Devices found!</span><br /></strong></h1>';
+} else {
+	echo '<div style="display: flex; flex-wrap: wrap; justify-content: center;">';
+	foreach (array_reverse($apex_devices) as $apex_device) {
+		$apex_states = new apex($apex_device);
+		$apexNames[] = $apex_states->name;
+		echo '<div style="width: 30%; height: 430px; border: 1px solid #ccc; margin: 5px; box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);">';
+		echo '<b style="color: #ff5e4d; font-size: larger;">Coral TPU' . $apex_states->index . ':</b>';
+		echo '<div style="padding: 20px;">';
+		echo '<span style="padding: 10px;"><table style="width: 80%; text-align: left; line-height: 0.5;">';
+		echo '<tr><td>Status:</td><td id="' . $apex_states->name . '_status">' . $apex_states->status . '</b></td></tr>';
+		echo '<tr><td>Temperature:</td><td id="' . $apex_states->name . '_temp">' . $apex_states->temp . '</b></td></tr>';
+		echo '<tr><td>Frequency:</td><td id="' . $apex_states->name . '_frequency">' . $apex_states->frequency . '</b></td></tr>';
+		echo '</tr>';
+		echo '<tr><td>Driver Version:</td><td>' . $apex_states->driver_version . '</td></tr>';
+		echo '<tr><td>Framework Version:</td><td>' . $apex_states->framework_version . '</td></tr>';
+		echo '</table></span>';
+		echo '<p><b>Limits:</b></p>';
+		echo '<span style="padding: 10px;"><table style="width: 100%; text-align: left; line-height: 0.5;">';
+		echo '<tr><td>Interrupt Temperature:</td><td><b style="color:orange">' . $apex_states->temp_hot . '°C</b></td><td>Status:</td><td>' . ($apex_states->temp_hot_en == 0 ? '<td><b style="color:red">DISABLED</b></td>' : '<td><b style="color:green">ENABLED</b></td>') . '</td></tr>';
+		echo '<tr><td>Shutdown Temperature:</td><td><b style="color:red">' . $apex_states->temp_hot2 . '°C</b></td><td>Status:</td><td>' . ($apex_states->temp_hot2_en == 0 ? '<td><b style="color:red">DISABLED</b></td>' : '<td><b style="color:green">ENABLED</b></td>') . '</td></tr>';
+		echo '</table></span>';
+		echo '<p><b>Throttle Clocks and Temperatures:</b></p>';
+		echo '<span style="padding: 10px;"><table style="width: 50%; text-align: left; line-height: 0.5;">';
+		echo '<tr><td>250 MHz</td><td><b style="color:orange">' . $apex_states->temp_tripp0 . '°C</b></tr>';
+		echo '<tr><td>125 MHz</td><td><b style="color:#e74c3c">' . $apex_states->temp_tripp1 . '°C</b></tr>';
+		echo '<tr><td>62.5 MHz</td><td><b style="color:red">' . $apex_states->temp_tripp2 . '°C</b></tr>';
+		echo '</table></span>';
+		echo '</div>';
+		echo '</div>';
+	}
+	echo '</div>';
+}
+?>
+
+<script>
+var apexNames = <?= json_encode($apexNames); ?>;
+
+function updateValues() {
+    $.ajax({
+        url: '/plugins/coral-driver/include/apex.php',
+        type: 'POST',
+        data: { action: 'updateValues', apexNames: JSON.stringify(apexNames) },
+        success: function(response) {
+            var data = JSON.parse(response);
+            for (var i = 0; i < data.length; i++) {
+                $('#' + data[i].name + '_status').html(data[i].status);
+                $('#' + data[i].name + '_temp').html(data[i].temp);
+                $('#' + data[i].name + '_frequency').html(data[i].frequency);
+            }
+        }
+    });
+}
+setInterval(function() {
+    updateValues();
+}, 5000);
+</script>

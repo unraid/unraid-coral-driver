@@ -1,0 +1,79 @@
+Menu="Dashboard:0"
+Cond="version_compare(parse_ini_file('/etc/unraid-version')['version'],'6.12.0-beta6', '>')"
+---
+<?php
+require_once '/usr/local/emhttp/plugins/coral-driver/include/apex.php';
+
+$apex_devices = array_filter(explode("\n", shell_exec("find /dev/ -maxdepth 1 -type c -name \"apex*\" -printf '%f\n' 2>/dev/null")));
+$apex_count = count(array_filter(explode("\n", shell_exec("find /dev/ -maxdepth 1 -type c -name \"apex*\" -printf '%f\n' 2>/dev/null"))));
+
+if ($apex_count > 1) {
+  $coralplural = "s";
+} else {
+  $coralplural = "";
+}
+
+$pluginname = "Coral TPU Driver";
+
+$layout = CoralLayout() ;
+
+$mytiles[$pluginname]['column2'] =
+<<<EOT
+<tbody id="lxc" title="$pluginname">
+<tr><td><i class='fa fa-microchip f32'></i><div class='section'>$pluginname<span><br>PCI based TPU$coralplural installed: $apex_count</span><br></div>
+<a href="Dashboard/Settings/coraltpu" title="_(Go to LXC settings)_"><i class="fa fa-fw fa-cog control"></i></a></td></tr></td></tr>
+<tr><td>
+$layout
+</td></tr>
+</tbody>
+EOT;
+
+function CoralLayout() {
+  $apex_devices = array_filter(explode("\n", shell_exec("find /dev/ -maxdepth 1 -type c -name \"apex*\" -printf '%f\n' 2>/dev/null")));
+  $page_render = '';
+
+  if (count($apex_devices) == 0) {
+    $page_render .= '<span id="no_tpu_installed">No PCI based Coral TPU found!</span>';
+    return $page_render;
+  }
+
+  $page_render .= '<tr class="header"><td>';
+  $page_render .= '<span class="w26">Device</span>';
+  $page_render .= '<span class="w26">Status</span>';
+  $page_render .= '<span class="w18">Temperature</span>';
+  $page_render .= '</td></tr>';
+  foreach (array_reverse($apex_devices) as $apex_device) {
+    $apex_states = new apex($apex_device);
+	$apexNames[] = $apex_states->name;
+    $page_render .= '<tr class="header"><td>';
+    $page_render .= '<span class="w26"><b style="color: #ff5e4d;">Coral TPU' . $apex_states->index . ':</b></span>';
+    $page_render .= '<span class="w26" id="' . $apex_states->name . '_status">' . $apex_states->status . '</b></span>';
+    $page_render .= '<span class="w18" id="' . $apex_states->name . '_temp">' . $apex_states->temp . '</b></span>';
+    $page_render .= '</td></tr>';
+  }
+  return $page_render;
+}
+?>
+
+<script type="text/javascript">
+var apexNames = <?= json_encode($apex_devices); ?>;
+
+function updateValues() {
+    $.ajax({
+        url: '/plugins/coral-driver/include/apex.php',
+        type: 'POST',
+        data: { action: 'updateValues', apexNames: JSON.stringify(apexNames) },
+        success: function(response) {
+            var data = JSON.parse(response);
+            for (var i = 0; i < data.length; i++) {
+                $('#' + data[i].name + '_status').html(data[i].status);
+                $('#' + data[i].name + '_temp').html(data[i].temp);
+                $('#' + data[i].name + '_frequency').html(data[i].frequency);
+            }
+        }
+    });
+}
+setInterval(function() {
+    updateValues();
+}, 5000);
+</script>
