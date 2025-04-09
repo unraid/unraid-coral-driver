@@ -1,0 +1,49 @@
+From 88cd3aa29eebd8c9ec6f480e259a6ff138c0e9e8 Mon Sep 17 00:00:00 2001
+From: Tiziano Bacocco <tizbac2@gmail.com>
+Date: Wed, 18 Dec 2024 13:50:02 +0100
+Subject: [PATCH] Fix build on 6.12, fix build when CONFIG_PM_SLEEP is ON
+
+Signed-off-by: Tiziano Bacocco <tizbac2@gmail.com>
+---
+ src/apex_driver.c | 4 ++--
+ src/gasket_core.c | 4 ++++
+ 2 files changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/src/apex_driver.c b/src/apex_driver.c
+index 1cc4e00..63e5ac9 100644
+--- a/src/apex_driver.c
++++ b/src/apex_driver.c
+@@ -1124,7 +1124,7 @@ static void apex_pci_remove(struct pci_dev *pci_dev)
+ 	gasket_pci_remove_device(pci_dev);
+ 	pci_disable_device(pci_dev);
+ }
+-
++#ifdef CONFIG_PM_SLEEP
+ static int apex_pci_suspend(struct pci_dev *pci_dev, pm_message_t state) {
+ 	struct apex_dev *apex_dev = pci_get_drvdata(pci_dev);
+ 	struct gasket_dev *gasket_dev;
+@@ -1162,7 +1162,7 @@ static int apex_pci_resume(struct pci_dev *pci_dev)
+ 
+ 	return 0;
+ }
+-
++#endif
+ static struct gasket_driver_desc apex_desc = {
+ 	.name = "apex",
+ 	.driver_version = APEX_DRIVER_VERSION,
+diff --git a/src/gasket_core.c b/src/gasket_core.c
+index b1c2726..4d8ecef 100644
+--- a/src/gasket_core.c
++++ b/src/gasket_core.c
+@@ -1373,7 +1373,11 @@ static long gasket_ioctl(struct file *filp, uint cmd, ulong arg)
+ /* File operations for all Gasket devices. */
+ static const struct file_operations gasket_file_ops = {
+ 	.owner = THIS_MODULE,
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,11,0)
++	.llseek = NULL,
++#else
+ 	.llseek = no_llseek,
++#endif
+ 	.mmap = gasket_mmap,
+ 	.open = gasket_open,
+ 	.release = gasket_release,
