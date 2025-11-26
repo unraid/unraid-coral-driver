@@ -2,6 +2,34 @@
 cd ${DATA_DIR}
 mkdir -p ${DATA_DIR}/apex /CORAL/lib/modules/${UNAME}/extra
 
+ # Check to apply patches
+TARGET_V="6.12.0"
+COMPARE="${UNAME%%-*}
+$TARGET_V"
+if [ "$TARGET_V" != "$(echo "$COMPARE" | sort -V | tail -1)" ]; then
+TARGET_V="6.13.0"
+COMPARE="${UNAME%%-*}
+$TARGET_V"
+if [ "$TARGET_V" != "$(echo "$COMPARE" | sort -V | tail -1)" ]; then
+TARGET_V="6.14.0"
+COMPARE="${UNAME%%-*}
+$TARGET_V"
+if [ "$TARGET_V" != "$(echo "$COMPARE" | sort -V | tail -1)" ]; then
+cd ${DATA_DIR}/apex
+cp ${DATA_DIR}/gasket_6.14.0.patch ${DATA_DIR}/apex/gasket_6.14.0.patch
+patch -p1 < ${DATA_DIR}/apex/gasket_6.14.0.patch
+else
+cd ${DATA_DIR}/apex
+cp ${DATA_DIR}/gasket_6.13.0.patch ${DATA_DIR}/apex/gasket_6.13.0.patch
+patch -p1 < ${DATA_DIR}/apex/gasket_6.13.0.patch
+fi
+else
+cd ${DATA_DIR}/apex
+cp ${DATA_DIR}/gasket_6.12.0.patch ${DATA_DIR}/apex/gasket_6.12.0.patch
+patch -p1 < ${DATA_DIR}/apex/gasket_6.12.0.patch
+fi
+fi
+
 # Compile modules
 cd ${DATA_DIR}/apex/src
 make -j${CPU_COUNT}
